@@ -2,44 +2,58 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import *
 from qgis import processing
 
-"""
-MergeBandsAndImages:
-
-For use with Sentinel-2 10m Resolution Imagery.
-Creates virtual rasters for each spatially unique image, comprised of all bands.
-Then, combines virtual rasters into mosiacked image, which is saved to the working directory of the project as 'Merged.tif'.
-
-"""
+layers = list(QgsProject.instance().mapLayers().values())
+#print(layers)
 
 ## Create Virtual Rasters:
-## For each spatially unique image, combine bands into virtual raster, load results directly into current QGIS project instance
+## For each spatially unique image, combine bands into virtual raster, load results into current QGIS project instance as temporary files
 def createVirtualRasters():
-    # Determine num of and names of spatially unique images
-    layerNames = []
-    for l in QgsProject.instance().mapLayers().values():    
-        layerNames.append(l.name())
-    uniqueImages = []
-    s = layerNames[0]
-    uniqueImages.append(s[:len(s)-8]) #Remove band suffix to group like names
-    for n in layerNames:
-        if n[:len(n)-8] not in uniqueImages:
-            uniqueImages.append(n[:len(n)-8])
-    for n in uniqueImages:
-        layerPaths = []
-        for l in QgsProject.instance().mapLayers().values():
-            s = l.name()
-            if s[:len(s)-8] == n:
-                layerPaths.append(l.source())
-        processing.runAndLoadResults("gdal:buildvirtualraster",{
-                                    'INPUT':layerPaths,
-                                    'RESOLUTION':0,
-                                    'SEPARATE':True,
-                                    'PROJ_DIFFERENCE':False,
-                                    'ADD_ALPHA':False,
-                                    'ASSIGN_CRS':None,
-                                    'RESAMPLING':0,
-                                    'OUTPUT':'TEMPORARY_OUTPUT'})
+    uniqueExtents = []
+    uniqueExtents.append(layers[0].extent())
 
+    # Determine raster extent of each unique image
+    for r in range(1, len(layers)):
+        if layers[r].extent() != layers[r-1].extent():
+            uniqueExtents.append(layers[r].extent())
+    
+    # If all the image extents are unique (single band), reduce processing time and create a virtual raster for each. 
+    if len(uniqueExtents) == len(layers):
+        # Initialize list to store raster sources
+        layerPaths = []
+        
+        # Get raster sources
+        for raster in layers:
+            layerPaths.append(raster.source())
+            
+        # Build virtual rasters
+        processing.runAndLoadResults("gdal:buildvirtualraster",{
+                                            'INPUT':layerPaths,
+                                            'RESOLUTION':0,
+                                            'SEPARATE':True,
+                                            'PROJ_DIFFERENCE':False,
+                                            'ADD_ALPHA':False,
+                                            'ASSIGN_CRS':None,
+                                            'RESAMPLING':0,
+                                            'OUTPUT':'TEMPORARY_OUTPUT'})    
+        
+    else:
+        #For each unique image extent with multiple bands, create a virtual raster
+        for ext in uniqueExtents:
+            layerPaths = []
+            for ras in layers:
+                extent = ras.extent()
+                if ras.extent() == ext:
+                    layerPaths.append(ras.source())
+            processing.runAndLoadResults("gdal:buildvirtualraster",{
+                                        'INPUT':layerPaths,
+                                        'RESOLUTION':0,
+                                        'SEPARATE':True,
+                                        'PROJ_DIFFERENCE':False,
+                                        'ADD_ALPHA':False,
+                                        'ASSIGN_CRS':None,
+                                        'RESAMPLING':0,
+                                        'OUTPUT':'TEMPORARY_OUTPUT'})
+                                    
 # Mosiac temporary virtual rasters, load results directly into current QGIS project instance, save output to wokring directory.                      
 def mosiacVirtualRasters():
     virtualLayerPaths = []
@@ -54,8 +68,7 @@ def mosiacVirtualRasters():
                                 'NODATA_INPUT':None,
                                 'NODATA_OUTPUT':None,
                                 'DATA_TYPE':5,
-                                'OUTPUT':outputPath})    
-            
+                                'OUTPUT':outputPath})
+                                    
 createVirtualRasters()
 mosiacVirtualRasters()
-
