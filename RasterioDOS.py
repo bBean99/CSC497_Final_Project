@@ -20,7 +20,6 @@ import os
 #            'EXTRA':'',
 #            'DATA_TYPE':0,
 #            'OUTPUT':rasterPath[0]+'nodataFilter'})
-    
 
 """
 findMinimumDataValue: Helper Function
@@ -81,6 +80,7 @@ def darkObjectSubtraction(raster, outputDir):
 
 # Get project directory
 rlayers = list(QgsProject.instance().mapLayers().values())
+inputRasterPath = rlayers[0].source()
 outputDirectory = os.path.dirname(inputRasterPath)
 
 # No Data Filter *Currently not working/not necessary

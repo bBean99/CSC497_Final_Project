@@ -130,7 +130,7 @@ def createVirtualRasters(layers):
 """
 mosiacVirtualRasters:
     Mosiac temporary virtual rasters.
-    Load results directly into current QGIS project instance, save output to wokring directory.                      
+    Load results directly into current QGIS project instance, save output to working directory.                      
 """
 def mosiacVirtualRasters():
     virtualLayerPaths = []
@@ -149,7 +149,7 @@ def mosiacVirtualRasters():
                                 'OUTPUT':outputPath})
                                 
 """
-BandIndicesAndEnhancments:
+BandIndicesAndEnhancements:
 
 Applies band index or enhancement to 'clippedRaster.tif'
 Saves new rasters in working directory.
@@ -174,6 +174,7 @@ def ndvi(outputPath):
 
 # Get project directory
 rlayers = list(QgsProject.instance().mapLayers().values())
+inputRasterPath = rlayers[0].source()
 outputDirectory = os.path.dirname(inputRasterPath)
 
 # No Data Filter *Currently not working/not necessary
